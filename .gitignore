@@ -1,0 +1,10 @@
+
+TIBERIANDAWN/Win32/Release/
+
+*.user
+
+bin/Win32/
+
+REDALERT/Win32/Release/
+
+.vs/
