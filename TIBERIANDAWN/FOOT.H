@@ -290,9 +290,11 @@ class FootClass :	public TechnoClass
 		bool Register_Cell(PathType *path, CELL cell, FacingType dir, int cost, MoveType threshhold);
 		bool Unravel_Loop(PathType *path, CELL &cell, FacingType &dir, int sx, int sy, int dx, int dy, MoveType threshhold);
 
+		// Pathfinding debug helper functions. These shouldn't be used in normal circumstances.
 		using map_buffer_type = std::array<std::array<uint8_t, 3>, MAP_CELL_W * MAP_CELL_H>;
 		map_buffer_type generate_map_buffer(const CELL start, const CELL destination) const;
-		void write_map_buffer_to_file(const std::string output_file, const map_buffer_type& map_buffer) const;
+		static void write_map_buffer_to_csv_file(const std::string output_file, const map_buffer_type& map_buffer);
+		static void write_path_to_csv(const std::string output_file, const PathType& path);
 
 		/*
 		**	This is the coordinate that the unit is heading to

@@ -119,16 +119,28 @@ typedef enum {
 /*-------------------------------------------------------------------------*/
 static bool DrawPath;
 
-void FootClass::draw_path(PathType* path) const
+void FootClass::write_path_to_csv(const std::string output_file, const PathType& path)
 {
-	if (!path) return;
+	std::ofstream ofs(output_file);
+	FacingType* list = path.Command;
 
-	FacingType* list = path->Command;
-	CELL 			pos = path->Start;
+	// Extract x/y coords from the cell index and write to the output stream
+	auto write_cell_coords = [&ofs](CELL cell)
+	{
+		// TODO: maybe do this with a macro or constexpr function to be nicer
+		// Bitmask the bottom 6 bits for x coordinate and rshift top 6 bits to get y coordinate
+		const auto x = cell & 0b000000111111;
+		const auto y = cell >> 6;
+		ofs << std::to_string(x) << "," << std::to_string(y) << "\n";
+	};
 
-	for (int idx = 0; idx < path->Length; idx++) {
+	CELL pos = path.Start;
+	write_cell_coords(pos);
+
+	for (int idx = 0; idx < path.Length; ++idx) 
+	{ // Update cell and write the new coordinates
 		pos = Adjacent_Cell(pos, *list++);
-		Draw_Cell_Point(pos, true, -1, 0);
+		write_cell_coords(pos);
 	}
 }
 
@@ -170,19 +182,12 @@ FootClass::map_buffer_type FootClass::generate_map_buffer(const CELL start, cons
 	return map_buffer;
 }
 
-void FootClass::write_map_buffer_to_csv_file(const std::string output_file, const map_buffer_type& map_buffer) const
+void FootClass::write_map_buffer_to_csv_file(const std::string output_file, const map_buffer_type& map_buffer)
 {
 	std::ofstream ofs(output_file);
-	for (size_t ii = 0; ii < map_buffer.size(); ++ii)
+	for (auto& pixel : map_buffer)
 	{
-		if (ii > 0)
-		{
-			if (ii % MAP_CELL_W)
-				ofs << ",";
-			else
-				ofs << "\n";
-		}
-		ofs << std::to_string(map_buffer[ii][0]) << "," << std::to_string(map_buffer[ii][1]) << "," << std::to_string(map_buffer[ii][2]);
+		ofs << std::to_string(pixel[0]) << "," << std::to_string(pixel[1]) << "," << std::to_string(pixel[2]) << "\n";
 	}
 }
 
