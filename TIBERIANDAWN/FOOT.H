@@ -35,6 +35,8 @@
 #ifndef FOOT_H
 #define FOOT_H
 
+#include <array>
+#include <string>
 #include	"target.h"
 #include	"type.h"
 #include	"techno.h"
@@ -280,11 +282,17 @@ class FootClass :	public TechnoClass
 	private:
 		int Passable_Cell(CELL cell, FacingType face, int threat, MoveType threshhold);
 		PathType * Find_Path(CELL dest, FacingType *final_moves, int maxlen, MoveType threshhold);
+
+
 		void Debug_Draw_Map(char *txt, CELL start, CELL dest, bool pause);
 		void Debug_Draw_Path(PathType *path);
 		bool Follow_Edge(CELL start, CELL target, PathType *path, FacingType search, FacingType olddir, int threat, int threat_stage, int max_cells, MoveType threshhold);
 		bool Register_Cell(PathType *path, CELL cell, FacingType dir, int cost, MoveType threshhold);
 		bool Unravel_Loop(PathType *path, CELL &cell, FacingType &dir, int sx, int sy, int dx, int dy, MoveType threshhold);
+
+		using map_buffer_type = std::array<std::array<uint8_t, 3>, MAP_CELL_W * MAP_CELL_H>;
+		map_buffer_type generate_map_buffer(const CELL start, const CELL destination) const;
+		void write_map_buffer_to_file(const std::string output_file, const map_buffer_type& map_buffer) const;
 
 		/*
 		**	This is the coordinate that the unit is heading to

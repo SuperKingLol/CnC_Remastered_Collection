@@ -48,6 +48,8 @@
  *   Set_Path_Overlap -- Sets the overlap bit for given cell                                   *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#include <array>
+#include <fstream>
 #include	"function.h"
 //#include	<string.h>
 
@@ -116,6 +118,73 @@ typedef enum {
 
 /*-------------------------------------------------------------------------*/
 static bool DrawPath;
+
+void FootClass::draw_path(PathType* path) const
+{
+	if (!path) return;
+
+	FacingType* list = path->Command;
+	CELL 			pos = path->Start;
+
+	for (int idx = 0; idx < path->Length; idx++) {
+		pos = Adjacent_Cell(pos, *list++);
+		Draw_Cell_Point(pos, true, -1, 0);
+	}
+}
+
+FootClass::map_buffer_type FootClass::generate_map_buffer(const CELL start, const CELL destination) const
+{
+	map_buffer_type map_buffer;
+	for (int x = 0; x < MAP_CELL_W; x++)
+	{
+		for (int y = 0; y < MAP_CELL_H; y++)
+		{
+			decltype(map_buffer)::value_type color = {0,0,0};
+
+			switch (Can_Enter_Cell((CELL)((y << MAP_CELL_MAX_Y_BITS) + x)))
+			{
+			case MOVE_OK:
+				color = { 0, 255, 0 }; // GREEN
+				break;
+			case MOVE_MOVING_BLOCK:
+				color = { 144, 238, 144 }; // LTGREEN
+				break;
+
+			case MOVE_DESTROYABLE:
+				color = {255, 255, 0}; // YELLOW
+				break;
+			case MOVE_TEMP:
+				color = {153,76,0}; // BROWN
+				break;
+			default:
+				color = {255,0,0}; // RED
+				break;
+			}
+			if ((CELL)((y << MAP_CELL_MAX_Y_BITS) + x) == start)
+				color = {102,178,255}; // LTBLUE
+			if ((CELL)((y << MAP_CELL_MAX_Y_BITS) + x) == destination)
+				color = { 0,0,255 }; // BLUE
+			map_buffer[x + (y * MAP_CELL_W)] = color;
+		}
+	}
+	return map_buffer;
+}
+
+void FootClass::write_map_buffer_to_csv_file(const std::string output_file, const map_buffer_type& map_buffer) const
+{
+	std::ofstream ofs(output_file);
+	for (size_t ii = 0; ii < map_buffer.size(); ++ii)
+	{
+		if (ii > 0)
+		{
+			if (ii % MAP_CELL_W)
+				ofs << ",";
+			else
+				ofs << "\n";
+		}
+		ofs << std::to_string(map_buffer[ii][0]) << "," << std::to_string(map_buffer[ii][1]) << "," << std::to_string(map_buffer[ii][2]);
+	}
+}
 
 inline FacingType Opposite(FacingType face)
 {

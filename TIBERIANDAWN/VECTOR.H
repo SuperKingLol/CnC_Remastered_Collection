@@ -50,18 +50,8 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#ifndef false
-#define false 0
-#endif
-#ifndef true
-#define true 1
-#endif
-
 #include	<stdlib.h>
 #include	<stddef.h>
-
-inline void * operator new(size_t , void * pointer) {return(pointer);}
-inline void * operator new[](size_t , void * pointer) {return(pointer);}
 
 
 /**************************************************************************

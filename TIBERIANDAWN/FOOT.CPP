@@ -73,8 +73,7 @@
  *   FootClass::~FootClass -- Default destructor for foot class objects.                       *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#include	"function.h"
-
+#include "function.h"
 
 /***********************************************************************************************
  * FootClass::FootClass -- Default constructor for foot class objects.                         *
@@ -401,7 +400,8 @@ bool FootClass::Basic_Path(void)
 		}
 #endif
 
-		if (!skip_path) {
+		if (!skip_path) 
+		{
 			Mark(MARK_UP);
 			Path[0] = FACING_NONE;		// Probably not necessary, but...
 
@@ -415,9 +415,12 @@ bool FootClass::Basic_Path(void)
 			FacingType	workpath1[200];	// Staging area for path list.
 			FacingType	workpath2[200];	// Staging area for path list.
 			MoveType		maxtype = MOVE_TEMP;
-			if (!House->IsHuman) {
+			if (!House->IsHuman) 
+			{
 				maxtype = MOVE_DESTROYABLE;
-			} else {
+			} 
+			else 
+			{
 
 				/*
 				**	For simple movement missions by the human player, then don't
@@ -426,7 +429,8 @@ bool FootClass::Basic_Path(void)
 				**	to a destination just because there is another friendly unit
 				**	occupying the destination location.
 				*/
-				if (Mission == MISSION_MOVE && Distance(NavCom) < 0x0280) {
+				if (Mission == MISSION_MOVE && Distance(NavCom) < 0x0280) 
+				{
 					maxtype = MOVE_DESTROYABLE;
 				}
 			}
