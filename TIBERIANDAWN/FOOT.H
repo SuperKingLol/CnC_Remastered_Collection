@@ -292,9 +292,9 @@ class FootClass :	public TechnoClass
 
 		// Pathfinding debug helper functions. These shouldn't be used in normal circumstances.
 		using map_buffer_type = std::array<std::array<uint8_t, 3>, MAP_CELL_W * MAP_CELL_H>;
-		map_buffer_type generate_map_buffer(const CELL start, const CELL destination) const;
-		static void write_map_buffer_to_csv_file(const std::string output_file, const map_buffer_type& map_buffer);
-		static void write_path_to_csv(const std::string output_file, const PathType& path);
+		map_buffer_type Generate_Map_Buffer(const CELL start, const CELL destination) const;
+		static void Write_Map_Buffer_To_CSV_File(const std::string output_file, const map_buffer_type& map_buffer);
+		static void Write_Path_To_CSV_File(const std::string output_file, const PathType& path);
 
 		/*
 		**	This is the coordinate that the unit is heading to

@@ -119,7 +119,8 @@ typedef enum {
 /*-------------------------------------------------------------------------*/
 static bool DrawPath;
 
-void FootClass::write_path_to_csv(const std::string output_file, const PathType& path)
+// Better Pathfinding debug functions
+void FootClass::Write_Path_To_CSV_File(const std::string output_file, const PathType& path)
 {
 	std::ofstream ofs(output_file);
 	FacingType* list = path.Command;
@@ -129,8 +130,8 @@ void FootClass::write_path_to_csv(const std::string output_file, const PathType&
 	{
 		// TODO: maybe do this with a macro or constexpr function to be nicer
 		// Bitmask the bottom 6 bits for x coordinate and rshift top 6 bits to get y coordinate
-		const auto x = cell & 0b000000111111;
-		const auto y = cell >> 6;
+		const auto x = cell & MAP_CELL_X_MASK;
+		const auto y = cell >> MAP_CELL_MAX_X_BITS;
 		ofs << std::to_string(x) << "," << std::to_string(y) << "\n";
 	};
 
@@ -144,7 +145,7 @@ void FootClass::write_path_to_csv(const std::string output_file, const PathType&
 	}
 }
 
-FootClass::map_buffer_type FootClass::generate_map_buffer(const CELL start, const CELL destination) const
+FootClass::map_buffer_type FootClass::Generate_Map_Buffer(const CELL start, const CELL destination) const
 {
 	map_buffer_type map_buffer;
 	for (int x = 0; x < MAP_CELL_W; x++)
@@ -182,7 +183,7 @@ FootClass::map_buffer_type FootClass::generate_map_buffer(const CELL start, cons
 	return map_buffer;
 }
 
-void FootClass::write_map_buffer_to_csv_file(const std::string output_file, const map_buffer_type& map_buffer)
+void FootClass::Write_Map_Buffer_To_CSV_File(const std::string output_file, const map_buffer_type& map_buffer)
 {
 	std::ofstream ofs(output_file);
 	for (auto& pixel : map_buffer)
@@ -190,6 +191,7 @@ void FootClass::write_map_buffer_to_csv_file(const std::string output_file, cons
 		ofs << std::to_string(pixel[0]) << "," << std::to_string(pixel[1]) << "," << std::to_string(pixel[2]) << "\n";
 	}
 }
+// End of Better Pathfinding debug functions
 
 inline FacingType Opposite(FacingType face)
 {
