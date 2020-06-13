@@ -48,10 +48,17 @@
  *   Set_Path_Overlap -- Sets the overlap bit for given cell                                   *
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#include <array>
-#include <fstream>
 #include	"function.h"
 //#include	<string.h>
+
+// Libs for new pathfinding functionality
+#include <vector>
+#include <array>
+#include <fstream>
+#include <queue>
+#include <stack>
+#include <functional>
+#include <map>
 
 /*
 **	When an edge search is started, it can be performed CLOCKwise or
@@ -542,7 +549,7 @@ bool FootClass::Register_Cell(PathType *path, CELL cell, FacingType dir, int cos
 			*/
 			for (idx = 0, list = path->Command; idx < path->Length; idx++, list++) {
 				pos = Adjacent_Cell(pos, *list);
-			  	if (pos == cell) {
+				if (pos == cell) {
 					idx++;
 					list++;
 					break;
@@ -1111,7 +1118,7 @@ bool FootClass::Follow_Edge(CELL start, CELL target, PathType *path, FacingType 
 					if (checkval && !online) {
 						forcefail = ((checkval ^ oldval) < 0);
 					} else {
-			 			forcefail = false;
+						forcefail = false;
 					}
 					/*
 					** The only exception to the above is when we are directly backtracking
@@ -1574,7 +1581,7 @@ void FootClass::Debug_Draw_Map(char *txt, CELL start, CELL dest, bool pause)
 	VisiblePage.Clear();
 	Fancy_Text_Print(txt, 160, 0, WHITE, BLACK, TPF_8POINT|TPF_CENTER);
 	for (int x = 0; x < 64; x++) {
- 		for (int y = 0; y < 64; y++) {
+		for (int y = 0; y < 64; y++) {
 			int color = 0;
 
 			switch (Can_Enter_Cell( (CELL)((y << 6) + x))) {
@@ -1616,4 +1623,186 @@ void FootClass::Debug_Draw_Path(PathType *path)
 		pos = Adjacent_Cell(pos, *list++);
 		Draw_Cell_Point(pos, true,	-1, 0);
 	}
+}
+
+
+
+//-----------------------------------------------------
+// Better Pathfinding.
+// AStar-based algorithm which trades off increased computational load (which we can easily handle, thanks to 25 years
+// of hardware improvements since the release of the original C&C) for better pathfinding.
+PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold)
+{
+	CELL source = Coord_Cell(Coord); // Source expressed as cell
+	static PathType path; // Main path control.
+
+	// HACK: debug/dev code
+	auto map_buffer = Generate_Map_Buffer(source, dest);
+	const std::string output_path = { "C:/Users/Lol/Documents/CnCRemastered/Mods/Tiberian_Dawn/" };
+	Write_Map_Buffer_To_CSV_File(output_path + "map.csv", map_buffer);
+
+
+	StartLocation = source;
+	DestLocation = dest;
+
+	/*
+	** Initialize the path structure so that we can keep track of the
+	** path.
+	*/
+	path.Start = source;
+	path.Cost = 0;
+	path.Length = 0;
+	path.Command = final_moves;
+	path.Command[0] = END;
+	path.Overlap = MainOverlap;
+	path.LastOverlap = -1;
+	path.LastFixup = -1;
+
+	memset(path.Overlap, 0, sizeof(MainOverlap));
+
+	/*
+	** Clear the over lap list and then make sure that our starting position is marked
+	** on the overlap list.  (Otherwise the harvesters will drive in circles... )
+	*/
+	//	memset(path.Overlap, 0, 512);
+	path.Overlap[source >> 5] |= (1 << ((source & 31) - 1));
+
+	/*
+	**	Account for trailing end of list command, so reduce the maximum
+	**	allowed legal commands to reflect this.
+	*/
+	maxlen--;
+
+	// Min heap. Store open nodes with lowest total cost at the top.
+	std::priority_queue<Node, std::vector<Node>, std::function<bool(const Node&, const Node&)>> open_nodes(
+		[](const Node& n1, const Node& n2)
+	{
+		return n1.cost_total > n2.cost_total;
+	});
+
+	auto start_node = Create_Node(source, source, 0, dest);
+
+	// Keep track of which nodes we've visited
+	std::map<size_t, Node> visited_nodes = { {start_node.cell, start_node} };
+
+	// Try to find lowest-cost path to goal. Once we have no more open_nodes, we're done.
+	open_nodes.push(start_node);
+	while (!open_nodes.empty())
+	{
+		// Get current node from min heap and check if it's the goal
+		auto current_node = open_nodes.top();
+		if (current_node.cell == dest)
+			break; // We've reached the goal! Top node is final node.
+		open_nodes.pop();
+
+		// Generate successors
+		auto successor_nodes = Generate_Successor_Nodes(current_node, dest);
+
+		for (auto& node : successor_nodes)
+		{
+			// Check if we've already visited this node
+			auto itr_nodes = visited_nodes.find(node.cell);
+			if (itr_nodes != std::end(visited_nodes))
+				if (itr_nodes->second.cost_total <= node.cost_total)
+					continue; // This isn't the lowest-cost path to this node. Skip adding it to the open_node list
+			visited_nodes[node.cell] = node; // Update/add cost for this node --> it was either not previously seen, or this is the lowest-cost path.
+			open_nodes.push(node);
+		}
+	}
+
+	std::stack<FacingType> move_list;
+	if (!open_nodes.empty())
+	{ // We found a solution
+		// Start at final node and continue backwards through parent nodes until we reach the start node.
+		// The start node has its own cell index as the parent. 
+		auto node = open_nodes.top();
+		while (node.cell != node.parent_cell)
+		{ // At each step, get the move direction required to enter the cell and add it to the move stack
+			auto move_direction = CELL_FACING(node.parent_cell, node.cell);
+			move_list.push(move_direction);
+			node = visited_nodes[node.parent_cell];
+		}
+	}
+
+	// Reverse the order
+	std::vector<FacingType> best_path;
+	while (!move_list.empty())
+	{
+		best_path.push_back(move_list.top());
+		move_list.pop();
+	}
+
+	// Populate the path structure (if we found a path)
+	auto final_path_length = min(best_path.size(), static_cast<size_t>(maxlen));
+	if (final_path_length) 
+	{
+		memcpy(&path.Command[0], best_path.data(), final_path_length);
+		path.Length = final_path_length;
+		path.Cost = 0; // HACK: this needs to be improved once the cost model is understood
+		path.LastOverlap = -1;
+		path.LastFixup = -1;
+	}
+
+	/*
+	**	Poke in the stop command.
+	*/
+	if (path.Length < maxlen)
+	{
+		path.Command[path.Length++] = END;
+	}
+
+	Write_Path_To_CSV_File(output_path + "final_path.csv", path);
+
+	return(&path);
+};
+
+// Create a Node object for the given cell, then populate its parents cell and cost fields
+FootClass::Node FootClass::Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const
+{
+	Node node{ cell, parent_cell, cost_to_node, this->Compute_Distance_To_Cell(cell, destination_cell) };
+	node.cost_total = node.cost_root_to_node + node.cost_node_to_goal;
+	return std::move(node);
+};
+
+// Return the XY map coordinates of the cell
+std::pair<int, int> FootClass::Cell_To_Coordinates(CELL cell) const
+{
+	return { Cell_X(cell), Cell_Y(cell) };
+};
+
+// Compute octile distance between cells. 
+// This is the distance allowed by a combination of horizontal, vertical, and diagonal moves.
+float FootClass::Compute_Distance_To_Cell(CELL cell_1, CELL cell_2) const
+{
+	auto [x1, y1] = Cell_To_Coordinates(cell_1);
+	auto [x2, y2] = Cell_To_Coordinates(cell_2);
+	const auto dx = std::abs(x1 - x2);
+	const auto dy = std::abs(y1 - y2);
+	const auto min_dx_dy = (dx < dy) ? dx : dy; // Need to use this to avoid having messy hacks to get around definition of min macro
+	return static_cast<float>((dx + dy) + (std::sqrt(2) - 2) * min_dx_dy);
+};
+
+// Construct vector of pathfinding nodes for all neighbouring cells which can be entered.
+std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& node, CELL destination) const
+{
+	std::vector<Node> successor_nodes;
+	auto [nx, ny] = Cell_To_Coordinates(node.cell);
+
+	for (FacingType direction = FACING_FIRST; direction < FACING_COUNT; ++direction)
+	{
+		auto successor_cell = Adjacent_Cell(node.cell, direction);
+		constexpr float straight_cost = 1.0f;
+		constexpr float diagonal_cost = 1.41421356237f;
+		const float move_cost = direction & 0b1 ? diagonal_cost : straight_cost; // Odd directions = diagonal, Even directions = vertical/horizontal
+
+		// Check that the node can be entered
+		// TODO: add threat-based cost here
+		auto move_result = Can_Enter_Cell(successor_cell, direction);
+		if (move_result == MOVE_OK)
+		{ // Create successor node and add it to the vector
+			auto successor_node = Create_Node(successor_cell, node.cell, node.cost_root_to_node + move_cost, destination);
+			successor_nodes.push_back(successor_node);
+		}
+	}
+	return std::move(successor_nodes);
 }

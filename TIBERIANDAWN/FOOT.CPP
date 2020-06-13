@@ -1449,7 +1449,7 @@ void FootClass::Per_Cell_Process(bool center)
  *=========================================================================*/
 void FootClass::Override_Mission(MissionType mission, TARGET tarcom, TARGET navcom)
 {
- 	SuspendedNavCom = NavCom;
+	SuspendedNavCom = NavCom;
 	TechnoClass::Override_Mission(mission, tarcom, navcom);
 
 	Assign_Destination(navcom);

@@ -43,6 +43,7 @@
 #endif
 #include <array>
 #include <string>
+#include <vector>
 #include	"target.h"
 #include	"type.h"
 #include	"techno.h"
@@ -288,7 +289,30 @@ class FootClass :	public TechnoClass
 	private:
 		int Passable_Cell(CELL cell, FacingType face, int threat, MoveType threshhold);
 		PathType * Find_Path(CELL dest, FacingType *final_moves, int maxlen, MoveType threshhold);
+		
+		//-----------------------------------------------------------------------------------------------
+		// Better Pathfinding
+		PathType* Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold);
+		struct Node
+		{
+			CELL cell;
+			CELL parent_cell;
+			float cost_root_to_node;
+			float cost_node_to_goal;
+			float cost_total;
+		};
+		Node FootClass::Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const;
+		std::pair<int, int> Cell_To_Coordinates(CELL cell) const;
+		float Compute_Distance_To_Cell(CELL start, CELL end) const;
+		std::vector<Node> Generate_Successor_Nodes(const Node& node, CELL goal) const;
 
+		// Pathfinding debug helper functions. These shouldn't be used in normal circumstances.
+		using map_buffer_type = std::array<std::array<uint8_t, 3>, MAP_CELL_W * MAP_CELL_H>;
+		map_buffer_type Generate_Map_Buffer(const CELL start, const CELL destination) const;
+		static void Write_Map_Buffer_To_CSV_File(const std::string output_file, const map_buffer_type& map_buffer);
+		static void Write_Path_To_CSV_File(const std::string output_file, const PathType& path);
+		// End of Better Pathfinding
+		//-----------------------------------------------------------------------------------------------
 
 		void Debug_Draw_Map(char *txt, CELL start, CELL dest, bool pause);
 		void Debug_Draw_Path(PathType *path);
@@ -296,11 +320,6 @@ class FootClass :	public TechnoClass
 		bool Register_Cell(PathType *path, CELL cell, FacingType dir, int cost, MoveType threshhold);
 		bool Unravel_Loop(PathType *path, CELL &cell, FacingType &dir, int sx, int sy, int dx, int dy, MoveType threshhold);
 
-		// Pathfinding debug helper functions. These shouldn't be used in normal circumstances.
-		using map_buffer_type = std::array<std::array<uint8_t, 3>, MAP_CELL_W * MAP_CELL_H>;
-		map_buffer_type Generate_Map_Buffer(const CELL start, const CELL destination) const;
-		static void Write_Map_Buffer_To_CSV_File(const std::string output_file, const map_buffer_type& map_buffer);
-		static void Write_Path_To_CSV_File(const std::string output_file, const PathType& path);
 
 		/*
 		**	This is the coordinate that the unit is heading to
