@@ -646,6 +646,12 @@ PathType * FootClass::Find_Path(CELL dest, FacingType *final_moves, int maxlen, 
 	}
 	Debug_Draw_Map("Initial Draw", source, dest, false);
 
+#ifdef DEBUG_PATHFINDING
+	auto map_buffer = Generate_Map_Buffer(source, dest);
+	const std::string output_path = { DEBUG_OUTPUT_FILE_PATH };
+	Write_Map_Buffer_To_CSV_File(output_path+"map.csv", map_buffer);
+#endif
+
 //	MoveMask = flags;
 	if (Team && Team->Class->IsRoundAbout) {
 		unit_threat			= (Team) ? Team->Risk : Risk();
@@ -972,6 +978,11 @@ end_of_list:
 		Get_Key_Num();
 	}
 //	IsFindPath = false;
+	
+#ifdef DEBUG_PATHFINDING
+	Write_Path_To_CSV_File(output_path + "final_path.csv", path);
+#endif
+
 	return(&path);
 }
 
@@ -1636,11 +1647,11 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	CELL source = Coord_Cell(Coord); // Source expressed as cell
 	static PathType path; // Main path control.
 
-	// HACK: debug/dev code
+#ifdef DEBUG_PATHFINDING
 	auto map_buffer = Generate_Map_Buffer(source, dest);
-	const std::string output_path = { "C:/Users/Lol/Documents/CnCRemastered/Mods/Tiberian_Dawn/" };
+	const std::string output_path = { DEBUG_OUTPUT_FILE_PATH };
 	Write_Map_Buffer_To_CSV_File(output_path + "map.csv", map_buffer);
-
+#endif
 
 	StartLocation = source;
 	DestLocation = dest;
@@ -1751,7 +1762,9 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 		path.Command[path.Length++] = END;
 	}
 
+#ifdef DEBUG_PATHFINDING
 	Write_Path_To_CSV_File(output_path + "final_path.csv", path);
+#endif
 
 	return &path;
 };
