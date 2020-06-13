@@ -35,6 +35,12 @@
 #ifndef FOOT_H
 #define FOOT_H
 
+#define USE_BETTER_PATHFINDING
+#ifdef USE_BETTER_PATHFINDING
+#define FIND_PATH Find_Better_Path
+#else
+#define FIND_PATH Find_Path
+#endif
 #include <array>
 #include <string>
 #include	"target.h"
