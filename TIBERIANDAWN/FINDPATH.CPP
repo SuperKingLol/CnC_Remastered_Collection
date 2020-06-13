@@ -1738,7 +1738,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	{
 		memcpy(&path.Command[0], best_path.data(), final_path_length);
 		path.Length = final_path_length;
-		path.Cost = 0; // HACK: this needs to be improved once the cost model is understood
+		path.Cost = 1; // HACK: this needs to be improved once the cost model is understood
 		path.LastOverlap = -1;
 		path.LastFixup = -1;
 	}
@@ -1753,7 +1753,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 
 	Write_Path_To_CSV_File(output_path + "final_path.csv", path);
 
-	return(&path);
+	return &path;
 };
 
 // Create a Node object for the given cell, then populate its parents cell and cost fields
