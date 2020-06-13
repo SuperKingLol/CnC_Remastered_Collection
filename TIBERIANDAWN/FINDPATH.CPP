@@ -1798,7 +1798,7 @@ std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& nod
 		// Check that the node can be entered
 		// TODO: add threat-based cost here
 		auto move_result = Can_Enter_Cell(successor_cell, direction);
-		if (move_result == MOVE_OK)
+		if (move_result < MOVE_NO)
 		{ // Create successor node and add it to the vector
 			auto successor_node = Create_Node(successor_cell, node.cell, node.cost_root_to_node + move_cost, destination);
 			successor_nodes.push_back(successor_node);
