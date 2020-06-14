@@ -413,7 +413,6 @@ bool FootClass::Basic_Path(void)
 			bool			found1=false;		// Found a best path yet?
 			PathType	   path1;
 			FacingType	workpath1[200];	// Staging area for path list.
-			FacingType	workpath2[200];	// Staging area for path list.
 			MoveType		maxtype = MOVE_TEMP;
 			if (!House->IsHuman) 
 			{
@@ -441,33 +440,34 @@ bool FootClass::Basic_Path(void)
 			**	scanning is unnecessary.
 			*/
 			path = FIND_PATH(cell, &workpath1[0], sizeof(workpath1), maxtype);
-			if (path && path->Cost) {
+			if (path && path->Cost) 
+			{
 				memcpy(&path1, path, sizeof(path1));
 				found1 = true;
 
-				/*
-				**	Scan for the best path possible. If this succeeds, then do a simple
-				**	comparison with the most agressive path. If they are very close, then
-				**	go with the best (easiest) path method.
-				*/
-				path = FIND_PATH(cell, &workpath2[0], sizeof(workpath2), MOVE_CLOAK);
-				if (path && path->Cost && path->Cost < MAX((path1.Cost + (path1.Cost/2)), 3)) {
-					memcpy(&path1, path, sizeof(path1));
-					memcpy(workpath1, workpath2, sizeof(workpath1));
-				} else {
+			//	/*
+			//	**	Scan for the best path possible. If this succeeds, then do a simple
+			//	**	comparison with the most agressive path. If they are very close, then
+			//	**	go with the best (easiest) path method.
+			//	*/
+			//	path = FIND_PATH(cell, &workpath2[0], sizeof(workpath2), MOVE_CLOAK);
+			//	if (path && path->Cost && path->Cost < MAX((path1.Cost + (path1.Cost/2)), 3)) {
+			//		memcpy(&path1, path, sizeof(path1));
+			//		memcpy(workpath1, workpath2, sizeof(workpath1));
+			//	} else {
 
-					/*
-					**	The easiest path method didn't result in a satisfactory path. Scan through
-					**	the rest of the path options, looking for the best one.
-					*/
-					for (MoveType move = MOVE_MOVING_BLOCK; move < maxtype; move++) {
-						path = FIND_PATH(cell, &workpath2[0], sizeof(workpath2), move);
-						if (path && path->Cost && path->Cost < MAX((path1.Cost + (path1.Cost/2)), 3)) {
-							memcpy(&path1, path, sizeof(path1));
-							memcpy(workpath1, workpath2, sizeof(workpath1));
-						}
-					}
-				}
+			//		/*
+			//		**	The easiest path method didn't result in a satisfactory path. Scan through
+			//		**	the rest of the path options, looking for the best one.
+			//		*/
+			//		for (MoveType move = MOVE_MOVING_BLOCK; move < maxtype; move++) {
+			//			path = FIND_PATH(cell, &workpath2[0], sizeof(workpath2), move);
+			//			if (path && path->Cost && path->Cost < MAX((path1.Cost + (path1.Cost/2)), 3)) {
+			//				memcpy(&path1, path, sizeof(path1));
+			//				memcpy(workpath1, workpath2, sizeof(workpath1));
+			//			}
+			//		}
+			//	}
 			}
 
 #ifdef OBSOLETE

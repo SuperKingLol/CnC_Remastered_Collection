@@ -53,7 +53,6 @@
 
 // Libs for new pathfinding functionality
 #include <vector>
-#include <array>
 #include <fstream>
 #include <queue>
 #include <stack>
@@ -135,7 +134,6 @@ void FootClass::Write_Path_To_CSV_File(const std::string output_file, const Path
 	// Extract x/y coords from the cell index and write to the output stream
 	auto write_cell_coords = [&ofs](CELL cell)
 	{
-		// TODO: maybe do this with a macro or constexpr function to be nicer
 		// Bitmask the bottom 6 bits for x coordinate and rshift top 6 bits to get y coordinate
 		const auto x = cell & MAP_CELL_X_MASK;
 		const auto y = cell >> MAP_CELL_MAX_X_BITS;
@@ -1650,7 +1648,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 #ifdef DEBUG_PATHFINDING
 	auto map_buffer = Generate_Map_Buffer(source, dest);
 	const std::string output_path = { DEBUG_OUTPUT_FILE_PATH };
-	Write_Map_Buffer_To_CSV_File(output_path + "map.csv", map_buffer);
+	Write_Map_Buffer_To_CSV_File(output_path + "better_map.csv", map_buffer);
 #endif
 
 	StartLocation = source;
@@ -1727,6 +1725,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 		// Start at final node and continue backwards through parent nodes until we reach the start node.
 		// The start node has its own cell index as the parent. 
 		auto node = open_nodes.top();
+		path.Cost = node.cost_total; // Final cost of path
 		while (node.cell != node.parent_cell)
 		{ // At each step, get the move direction required to enter the cell and add it to the move stack
 			auto move_direction = CELL_FACING(node.parent_cell, node.cell);
@@ -1749,7 +1748,6 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	{
 		memcpy(&path.Command[0], best_path.data(), final_path_length);
 		path.Length = final_path_length;
-		path.Cost = 1; // HACK: this needs to be improved once the cost model is understood
 		path.LastOverlap = -1;
 		path.LastFixup = -1;
 	}
@@ -1763,7 +1761,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	}
 
 #ifdef DEBUG_PATHFINDING
-	Write_Path_To_CSV_File(output_path + "final_path.csv", path);
+	Write_Path_To_CSV_File(output_path + "better_final_path.csv", path);
 #endif
 
 	return &path;
@@ -1806,13 +1804,14 @@ std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& nod
 		auto successor_cell = Adjacent_Cell(node.cell, direction);
 		constexpr float straight_cost = 1.0f;
 		constexpr float diagonal_cost = 1.41421356237f;
-		const float move_cost = direction & 0b1 ? diagonal_cost : straight_cost; // Odd directions = diagonal, Even directions = vertical/horizontal
+		float move_cost = direction & 0b1 ? diagonal_cost : straight_cost; // Odd directions = diagonal, Even directions = vertical/horizontal
 
 		// Check that the node can be entered
 		// TODO: add threat-based cost here
 		auto move_result = Can_Enter_Cell(successor_cell, direction);
 		if (move_result < MOVE_NO)
 		{ // Create successor node and add it to the vector
+			move_cost *= m_move_penalty_factor[move_result]; // Scale cost penalty based on move result
 			auto successor_node = Create_Node(successor_cell, node.cell, node.cost_root_to_node + move_cost, destination);
 			successor_nodes.push_back(successor_node);
 		}

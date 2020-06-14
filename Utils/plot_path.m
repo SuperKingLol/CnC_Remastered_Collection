@@ -11,5 +11,5 @@ function plot_path(final_path_file, map_file)
   map = permute(reshape(map_vector, [64, 64, 3]), [2,1,3]);
   imshow(map);
   hold on;
-  plot(path(:,1) + 1, path(:,2) + 1,'b');
+  plot(path(1:end-1,1) + 1, path(1:end-1,2) + 1,'b','linewidth',4);
 endfunction
