@@ -8,3 +8,5 @@ bin/Win32/
 REDALERT/Win32/Release/
 
 .vs/
+
+*.ofig
