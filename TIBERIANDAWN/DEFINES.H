@@ -329,7 +329,8 @@ typedef enum SpecialWeaponType : unsigned char {
 **	return value, appropriate action may be chosen.
 **	NOTE: If this changes, update the static array in Find_Path module.
 */
-typedef enum MoveType : unsigned char {
+enum MoveType : unsigned char 
+{
 	MOVE_OK, 				// No blockage.
 	MOVE_CLOAK,				// A cloaked blocking enemy object.
 	MOVE_MOVING_BLOCK,	// Blocked, but only temporarily.
@@ -338,7 +339,7 @@ typedef enum MoveType : unsigned char {
 	MOVE_NO,					// Strictly prohibited terrain.
 
 	MOVE_COUNT
-} MoveType;
+};
 
 
 /**********************************************************************

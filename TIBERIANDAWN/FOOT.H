@@ -301,7 +301,15 @@ class FootClass :	public TechnoClass
 			float cost_node_to_goal;
 			float cost_total;
 		};
-		Node FootClass::Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const;
+		static constexpr float m_move_penalty_factor[MOVE_COUNT] = {
+			1, //	MOVE_OK
+			1, //	MOVE_CLOAK
+			3, //	MOVE_MOVING_BLOCK
+			8, //	MOVE_DESTROYABLE
+			8, //	MOVE_TEMP
+			0 //	MOVE_NO - this shouldn't be required.
+		};
+		Node Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const;
 		std::pair<int, int> Cell_To_Coordinates(CELL cell) const;
 		float Compute_Distance_To_Cell(CELL start, CELL end) const;
 		std::vector<Node> Generate_Successor_Nodes(const Node& node, CELL goal) const;
