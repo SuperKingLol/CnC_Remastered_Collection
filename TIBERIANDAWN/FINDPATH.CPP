@@ -1640,10 +1640,9 @@ void FootClass::Debug_Draw_Path(PathType *path)
 // Better Pathfinding.
 // AStar-based algorithm which trades off increased computational load (which we can easily handle, thanks to 25 years
 // of hardware improvements since the release of the original C&C) for better pathfinding.
-PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold)
+PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold) const
 {
-	CELL source = Coord_Cell(Coord); // Source expressed as cell
-	static PathType path; // Main path control.
+	const CELL source = Coord_Cell(Coord); // Source expressed as cell
 
 #ifdef DEBUG_PATHFINDING
 	auto map_buffer = Generate_Map_Buffer(source, dest);
@@ -1651,13 +1650,11 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	Write_Map_Buffer_To_CSV_File(output_path + "better_map.csv", map_buffer);
 #endif
 
-	StartLocation = source;
-	DestLocation = dest;
-
 	/*
 	** Initialize the path structure so that we can keep track of the
 	** path.
 	*/
+	static PathType path; // Main path control.
 	path.Start = source;
 	path.Cost = 0;
 	path.Length = 0;
@@ -1683,13 +1680,9 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	maxlen--;
 
 	// Min heap. Store open nodes with lowest total cost at the top.
-	std::priority_queue<Node, std::vector<Node>, std::function<bool(const Node&, const Node&)>> open_nodes(
-		[](const Node& n1, const Node& n2)
-	{
-		return n1.cost_total > n2.cost_total;
-	});
+	ordered_queue_type<Node, std::greater<Node>> open_nodes;
 
-	auto start_node = Create_Node(source, source, 0, dest);
+	auto start_node = Create_Node(source, source, 0, dest); // We identify the source node as the node with its own index as the parent
 
 	// Keep track of which nodes we've visited
 	std::map<size_t, Node> visited_nodes = { {start_node.cell, start_node} };
@@ -1734,7 +1727,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 		}
 	}
 
-	// Reverse the order
+	// Reverse the order. This could be rewritten to avoid the extra copy. I'll do that the day that I notice a performance hit :P
 	std::vector<FacingType> best_path;
 	while (!move_list.empty())
 	{
@@ -1743,7 +1736,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	}
 
 	// Populate the path structure (if we found a path)
-	auto final_path_length = min(best_path.size(), static_cast<size_t>(maxlen));
+	auto final_path_length = min(best_path.size(), static_cast<size_t>(maxlen)); // Ancient windows macro means we can't use std::min without a hideous undef mess.
 	if (final_path_length) 
 	{
 		memcpy(&path.Command[0], best_path.data(), final_path_length);
@@ -1776,32 +1769,29 @@ FootClass::Node FootClass::Create_Node(CELL cell, CELL parent_cell, float cost_t
 };
 
 // Return the XY map coordinates of the cell
-std::pair<int, int> FootClass::Cell_To_Coordinates(CELL cell) const
+std::pair<int, int> FootClass::Cell_To_Coordinates(const CELL cell) const
 {
 	return { Cell_X(cell), Cell_Y(cell) };
 };
 
 // Compute octile distance between cells. 
 // This is the distance allowed by a combination of horizontal, vertical, and diagonal moves.
-float FootClass::Compute_Distance_To_Cell(CELL cell_1, CELL cell_2) const
+float FootClass::Compute_Distance_To_Cell(const CELL cell_1, const CELL cell_2) const
 {
 	auto [x1, y1] = Cell_To_Coordinates(cell_1);
 	auto [x2, y2] = Cell_To_Coordinates(cell_2);
 	const auto dx = std::abs(x1 - x2);
 	const auto dy = std::abs(y1 - y2);
 	const auto min_dx_dy = (dx < dy) ? dx : dy; // Need to use this to avoid having messy hacks to get around definition of min macro
-	return static_cast<float>((dx + dy) + (std::sqrt(2) - 2) * min_dx_dy);
+	return static_cast<float>((dx + dy) + (std::sqrtf(2.0f) - 2.0f) * min_dx_dy);
 };
 
 // Construct vector of pathfinding nodes for all neighbouring cells which can be entered.
 std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& node, CELL destination) const
 {
 	std::vector<Node> successor_nodes;
-	auto [nx, ny] = Cell_To_Coordinates(node.cell);
-
-	for (FacingType direction = FACING_FIRST; direction < FACING_COUNT; ++direction)
+	auto validate_successor_candidates = [this, &successor_nodes, node, destination](const CELL successor_cell, const FacingType direction)
 	{
-		auto successor_cell = Adjacent_Cell(node.cell, direction);
 		constexpr float straight_cost = 1.0f;
 		constexpr float diagonal_cost = 1.41421356237f;
 		float move_cost = direction & 0b1 ? diagonal_cost : straight_cost; // Odd directions = diagonal, Even directions = vertical/horizontal
@@ -1811,10 +1801,34 @@ std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& nod
 		auto move_result = Can_Enter_Cell(successor_cell, direction);
 		if (move_result < MOVE_NO)
 		{ // Create successor node and add it to the vector
-			move_cost *= m_move_penalty_factor[move_result]; // Scale cost penalty based on move result
+			move_cost *= Move_Penalty_Factor(move_result); // Scale cost penalty based on move result
 			auto successor_node = Create_Node(successor_cell, node.cell, node.cost_root_to_node + move_cost, destination);
 			successor_nodes.push_back(successor_node);
 		}
+	};
+	For_Each_Adjacent_Cell(node.cell, validate_successor_candidates);
+	return successor_nodes;
+}
+
+// Apply a callback function to each cell adjacent to the target cell
+void FootClass::For_Each_Adjacent_Cell(const CELL target_cell, std::function<void(const CELL&, const FacingType&)> callback) const
+{
+	for (FacingType direction = FACING_FIRST; direction < FACING_COUNT; ++direction)
+	{
+		const auto successor_cell = Adjacent_Cell(target_cell, direction);
+		callback(successor_cell, direction);
 	}
-	return std::move(successor_nodes);
+}
+
+// Returns the penalty factor associated with a move result
+float FootClass::Move_Penalty_Factor(const MoveType move_type) const
+{
+	auto move_penalty_factor = m_move_penalty_factor[move_type];
+	return move_penalty_factor;
+}
+
+// Produce a cost map around the goal area containing N passable nodes
+std::vector<FootClass::Node> FootClass::Goal_Cost_Map(const CELL goal, const size_t num_nodes) const
+{ // TODO: continue here 16/06/2020
+	return {}; // TODO: replace this with an actual implementation!
 }
