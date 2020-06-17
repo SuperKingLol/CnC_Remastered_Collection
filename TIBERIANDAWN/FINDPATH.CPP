@@ -1697,7 +1697,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 			break; // We've reached the goal! Top node is final node.
 		open_nodes.pop();
 
-		// Generate successors
+		// Generate successor nodes to the current one
 		auto successor_nodes = Generate_Successor_Nodes(current_node, dest);
 
 		for (auto& node : successor_nodes)
@@ -1706,7 +1706,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 			auto itr_nodes = visited_nodes.find(node.cell);
 			if (itr_nodes != std::end(visited_nodes))
 				if (itr_nodes->second.cost_total <= node.cost_total)
-					continue; // This isn't the lowest-cost path to this node. Skip adding it to the open_node list
+					continue; // This isn't the lowest-cost path to this node. Skip adding it to the open node list
 			visited_nodes[node.cell] = node; // Update/add cost for this node --> it was either not previously seen, or this is the lowest-cost path.
 			open_nodes.push(node);
 		}
@@ -1790,10 +1790,10 @@ float FootClass::Compute_Distance_To_Cell(const CELL cell_1, const CELL cell_2) 
 std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& node, CELL destination) const
 {
 	std::vector<Node> successor_nodes;
-	auto validate_successor_candidates = [this, &successor_nodes, node, destination](const CELL successor_cell, const FacingType direction)
+	auto validate_successor_candidate = [this, &successor_nodes, node, destination](const CELL successor_cell, const FacingType direction)
 	{
 		constexpr float straight_cost = 1.0f;
-		constexpr float diagonal_cost = 1.41421356237f;
+		constexpr float diagonal_cost = 1.41421356237f; // sqrt(2)
 		float move_cost = direction & 0b1 ? diagonal_cost : straight_cost; // Odd directions = diagonal, Even directions = vertical/horizontal
 
 		// Check that the node can be entered
@@ -1806,7 +1806,7 @@ std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& nod
 			successor_nodes.push_back(successor_node);
 		}
 	};
-	For_Each_Adjacent_Cell(node.cell, validate_successor_candidates);
+	For_Each_Adjacent_Cell(node.cell, validate_successor_candidate);
 	return successor_nodes;
 }
 
@@ -1823,7 +1823,7 @@ void FootClass::For_Each_Adjacent_Cell(const CELL target_cell, std::function<voi
 // Returns the penalty factor associated with a move result
 float FootClass::Move_Penalty_Factor(const MoveType move_type) const
 {
-	auto move_penalty_factor = m_move_penalty_factor[move_type];
+	auto move_penalty_factor = m_base_move_penalty_factor[move_type];
 	return move_penalty_factor;
 }
 

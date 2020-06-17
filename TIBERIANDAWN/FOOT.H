@@ -312,10 +312,11 @@ class FootClass :	public TechnoClass
 		template <typename T_data, typename T_comparator>
 		using ordered_queue_type = std::priority_queue<Node, std::vector<T_data>, T_comparator>;
 		Node Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const;
+		std::vector<Node> Generate_Successor_Nodes(const Node& node, CELL goal) const;
+		
 		std::pair<int, int> Cell_To_Coordinates(CELL cell) const;
 		float Compute_Distance_To_Cell(CELL start, CELL end) const;
-		std::vector<Node> Generate_Successor_Nodes(const Node& node, CELL goal) const;
-		static constexpr float m_move_penalty_factor[MOVE_COUNT] = {
+		static constexpr float m_base_move_penalty_factor[MOVE_COUNT] = {
 			1, //	MOVE_OK
 			1, //	MOVE_CLOAK
 			3, //	MOVE_MOVING_BLOCK
