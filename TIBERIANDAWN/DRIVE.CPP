@@ -1065,20 +1065,25 @@ bool DriveClass::Start_Of_Move(void)
 		if (cando != MOVE_OK)
 		{
 
-			if (Mission == MISSION_MOVE && House->IsHuman && Distance(NavCom) < 0x0200) {
-				Assign_Destination(TARGET_NONE);
-			}
-
 			/*
 			**	If a temporary friendly object is blocking the path, then cause it to
 			**	get out of the way.
 			*/
-			if (cando == MOVE_TEMP) {
-				bool old = Special.IsScatter;
-				Special.IsScatter = true;
-				Map[destcell].Incoming(0, true);
-				Special.IsScatter = old;
+			if (cando == MOVE_TEMP) 
+			{
+				if (Distance(NavCom) >= 0x0200)
+				{
+					bool old = Special.IsScatter;
+					Special.IsScatter = true;
+					Map[destcell].Incoming(0, true);
+					Special.IsScatter = old;
+				}
 			}
+
+			if (Mission == MISSION_MOVE && House->IsHuman && Distance(NavCom) < 0x0200) {
+				Assign_Destination(TARGET_NONE);
+			}
+
 
 			/*
 			**	If a cloaked object is blocking, then shimmer the cell.
@@ -1211,11 +1216,15 @@ bool DriveClass::Start_Of_Move(void)
 						**	If a temporary friendly object is blocking the path, then cause it to
 						**	get out of the way.
 						*/
-						if (cando == MOVE_TEMP) {
-							bool old = Special.IsScatter;
-							Special.IsScatter = true;
-							Map[destcell].Incoming(0, true);
-							Special.IsScatter = old;
+						if (cando == MOVE_TEMP) 
+						{
+							if (destcell != As_Cell(this->NavCom))
+							{
+								bool old = Special.IsScatter;
+								Special.IsScatter = true;
+								Map[destcell].Incoming(0, true);
+								Special.IsScatter = old;
+							}
 						}
 
 						/*
