@@ -44,6 +44,8 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <functional>
+#include <queue>
 #include	"target.h"
 #include	"type.h"
 #include	"techno.h"
@@ -292,7 +294,8 @@ class FootClass :	public TechnoClass
 		
 		//-----------------------------------------------------------------------------------------------
 		// Better Pathfinding
-		PathType* Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold);
+		PathType* Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold) const;
+		
 		struct Node
 		{
 			CELL cell;
@@ -300,19 +303,30 @@ class FootClass :	public TechnoClass
 			float cost_root_to_node;
 			float cost_node_to_goal;
 			float cost_total;
+
+			const bool operator>(const Node& rhs) const
+			{
+				return this->cost_total > rhs.cost_total;
+			}
 		};
-		static constexpr float m_move_penalty_factor[MOVE_COUNT] = {
+		template <typename T_data, typename T_comparator>
+		using ordered_queue_type = std::priority_queue<Node, std::vector<T_data>, T_comparator>;
+		Node Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const;
+		std::vector<Node> Generate_Successor_Nodes(const Node& node, CELL goal) const;
+		
+		std::pair<int, int> Cell_To_Coordinates(CELL cell) const;
+		float Compute_Distance_To_Cell(CELL start, CELL end) const;
+		static constexpr float m_base_move_penalty_factor[MOVE_COUNT] = {
 			1, //	MOVE_OK
 			1, //	MOVE_CLOAK
 			3, //	MOVE_MOVING_BLOCK
 			8, //	MOVE_DESTROYABLE
 			8, //	MOVE_TEMP
-			0 //	MOVE_NO - this shouldn't be required.
+			1000 //	MOVE_NO - this should never be required, but give it a big penalty value anyway
 		};
-		Node Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const;
-		std::pair<int, int> Cell_To_Coordinates(CELL cell) const;
-		float Compute_Distance_To_Cell(CELL start, CELL end) const;
-		std::vector<Node> Generate_Successor_Nodes(const Node& node, CELL goal) const;
+		float Move_Penalty_Factor(const MoveType move_type) const;
+		std::vector<FootClass::Node> FootClass::Goal_Cost_Map(const CELL goal, const size_t num_nodes) const;
+		void For_Each_Adjacent_Cell(const CELL cell, std::function<void(const CELL&, const FacingType&)> callback) const;
 
 		// Pathfinding debug helper functions. These shouldn't be used in normal circumstances.
 		using map_buffer_type = std::array<std::array<uint8_t, 3>, MAP_CELL_W * MAP_CELL_H>;

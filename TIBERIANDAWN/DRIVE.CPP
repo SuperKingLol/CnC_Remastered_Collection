@@ -1062,32 +1062,40 @@ bool DriveClass::Start_Of_Move(void)
 		MoveType cando = Can_Enter_Cell(destcell, facing);
 		Mark(MARK_DOWN);
 
-		if (cando != MOVE_OK) {
-
-			if (Mission == MISSION_MOVE && House->IsHuman && Distance(NavCom) < 0x0200) {
-				Assign_Destination(TARGET_NONE);
-			}
+		if (cando != MOVE_OK)
+		{
 
 			/*
 			**	If a temporary friendly object is blocking the path, then cause it to
 			**	get out of the way.
 			*/
-			if (cando == MOVE_TEMP) {
-				bool old = Special.IsScatter;
-				Special.IsScatter = true;
-				Map[destcell].Incoming(0, true);
-				Special.IsScatter = old;
+			if (cando == MOVE_TEMP) 
+			{
+				if (Distance(NavCom) >= 0x0200)
+				{
+					bool old = Special.IsScatter;
+					Special.IsScatter = true;
+					Map[destcell].Incoming(0, true);
+					Special.IsScatter = old;
+				}
 			}
+
+			if (Mission == MISSION_MOVE && House->IsHuman && Distance(NavCom) < 0x0200) {
+				Assign_Destination(TARGET_NONE);
+			}
+
 
 			/*
 			**	If a cloaked object is blocking, then shimmer the cell.
 			*/
-			if (cando == MOVE_CLOAK) {
+			if (cando == MOVE_CLOAK) 
+			{
 				Map[destcell].Shimmer();
 			}
 
 			Stop_Driver();
-			if (cando != MOVE_MOVING_BLOCK) {
+			if (cando != MOVE_MOVING_BLOCK) 
+			{
 			 	Path[0] = FACING_NONE;		// Path is blocked!
 			}
 
@@ -1095,18 +1103,27 @@ bool DriveClass::Start_Of_Move(void)
 			** If blocked by a moving block then just exit start of move and
 			** try again next tick.
 			*/
-			if (cando == MOVE_DESTROYABLE) {
-				if (Map[destcell].Cell_Object()) {
-					if (!House->Is_Ally(Map[destcell].Cell_Object())) {
+			if (cando == MOVE_DESTROYABLE) 
+			{
+				if (Map[destcell].Cell_Object()) 
+				{
+					if (!House->Is_Ally(Map[destcell].Cell_Object())) 
+					{
 						Override_Mission(MISSION_ATTACK, Map[destcell].Cell_Object()->As_Target(), TARGET_NONE);
 					}
-				} else {
-					if (Map[destcell].Overlay != OVERLAY_NONE && OverlayTypeClass::As_Reference(Map[destcell].Overlay).IsWall) {
+				} 
+				else 
+				{
+					if (Map[destcell].Overlay != OVERLAY_NONE && OverlayTypeClass::As_Reference(Map[destcell].Overlay).IsWall) 
+					{
 						Override_Mission(MISSION_ATTACK, ::As_Target(destcell), TARGET_NONE);
 					}
 				}
-			} else {
-				if (IsNewNavCom) Sound_Effect(VOC_SCOLD);
+			} 
+			else 
+			{
+				if (IsNewNavCom) 
+					Sound_Effect(VOC_SCOLD);
 			}
 			IsNewNavCom = false;
 			TrackNumber = -1;
@@ -1199,11 +1216,15 @@ bool DriveClass::Start_Of_Move(void)
 						**	If a temporary friendly object is blocking the path, then cause it to
 						**	get out of the way.
 						*/
-						if (cando == MOVE_TEMP) {
-							bool old = Special.IsScatter;
-							Special.IsScatter = true;
-							Map[destcell].Incoming(0, true);
-							Special.IsScatter = old;
+						if (cando == MOVE_TEMP) 
+						{
+							if (destcell != As_Cell(this->NavCom))
+							{
+								bool old = Special.IsScatter;
+								Special.IsScatter = true;
+								Map[destcell].Incoming(0, true);
+								Special.IsScatter = old;
+							}
 						}
 
 						/*
