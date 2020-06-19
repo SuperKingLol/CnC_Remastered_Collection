@@ -233,6 +233,8 @@ class InfantryClass : public FootClass
 		*/
 		static int const HumanShape[32];
 
+		static constexpr float tiberium_fear_factor = 4.0f; // Penalty factor to movement cost when traversing tiberium
+
 	private:
 
 		static DoStruct const MasterDoControls[DO_COUNT];

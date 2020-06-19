@@ -324,7 +324,7 @@ class FootClass :	public TechnoClass
 			8, //	MOVE_TEMP
 			1000 //	MOVE_NO - this should never be required, but give it a big penalty value anyway
 		};
-		float Move_Penalty_Factor(const MoveType move_type) const;
+		float Move_Penalty_Factor(const CELL move_destination, const MoveType move_type) const;
 		std::vector<FootClass::Node> FootClass::Goal_Cost_Map(const CELL goal, const size_t num_nodes) const;
 		void For_Each_Adjacent_Cell(const CELL cell, std::function<void(const CELL&, const FacingType&)> callback) const;
 

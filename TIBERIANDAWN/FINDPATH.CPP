@@ -1797,7 +1797,7 @@ std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& nod
 		auto move_result = Can_Enter_Cell(successor_cell, direction);
 		if (move_result < MOVE_NO)
 		{ // Create successor node and add it to the vector
-			move_cost *= Move_Penalty_Factor(move_result); // Scale cost penalty based on move result
+			move_cost *= Move_Penalty_Factor(successor_cell, move_result); // Scale cost penalty based on move result
 			auto successor_node = Create_Node(successor_cell, node.cell, node.cost_root_to_node + move_cost, destination);
 			successor_nodes.push_back(successor_node);
 		}
@@ -1816,10 +1816,19 @@ void FootClass::For_Each_Adjacent_Cell(const CELL target_cell, std::function<voi
 	}
 }
 
-// Returns the penalty factor associated with a move result
-float FootClass::Move_Penalty_Factor(const MoveType move_type) const
+// Returns the penalty factor associated with the specified move type towards the given cell.
+float FootClass::Move_Penalty_Factor(CELL move_destination, const MoveType move_type) const
 {
 	auto move_penalty_factor = m_base_move_penalty_factor[move_type];
+	if (this->What_Am_I() == RTTI_INFANTRY)
+	{
+		const auto* cell_ptr = &Map[move_destination];
+		if (cell_ptr->Overlay != OVERLAY_NONE
+			&& OverlayTypeClass::As_Reference(cell_ptr->Overlay).Land == LAND_TIBERIUM) 
+		{
+			move_penalty_factor *= InfantryClass::tiberium_fear_factor;
+		}
+	}
 	return move_penalty_factor;
 }
 
