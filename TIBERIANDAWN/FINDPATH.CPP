@@ -57,7 +57,7 @@
 #include <queue>
 #include <stack>
 #include <functional>
-#include <map>
+#include <unordered_map>
 
 /*
 **	When an edge search is started, it can be performed CLOCKwise or
@@ -1685,7 +1685,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 	auto start_node = Create_Node(source, source, 0, dest); // We identify the source node as the node with its own index as the parent
 
 	// Keep track of which nodes we've visited
-	std::map<size_t, Node> visited_nodes = { {start_node.cell, start_node} };
+	std::unordered_map<size_t, Node> visited_nodes = { {start_node.cell, start_node} };
 
 	// Try to find lowest-cost path to goal. Once we have no more open_nodes, we're done.
 	open_nodes.push(start_node);
@@ -1712,7 +1712,7 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 		}
 	}
 
-	std::stack<FacingType> move_list;
+	std::stack<FacingType> move_stack;
 	if (!open_nodes.empty())
 	{ // We found a solution
 		// Start at final node and continue backwards through parent nodes until we reach the start node.
@@ -1722,24 +1722,20 @@ PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int ma
 		while (node.cell != node.parent_cell)
 		{ // At each step, get the move direction required to enter the cell and add it to the move stack
 			auto move_direction = CELL_FACING(node.parent_cell, node.cell);
-			move_list.push(move_direction);
+			move_stack.push(move_direction);
 			node = visited_nodes[node.parent_cell];
 		}
 	}
 
-	// Reverse the order. This could be rewritten to avoid the extra copy. I'll do that the day that I notice a performance hit :P
-	std::vector<FacingType> best_path;
-	while (!move_list.empty())
-	{
-		best_path.push_back(move_list.top());
-		move_list.pop();
-	}
-
 	// Populate the path structure (if we found a path)
-	auto final_path_length = min(best_path.size(), static_cast<size_t>(maxlen)); // Ancient windows macro means we can't use std::min without a hideous undef mess.
+	auto final_path_length = min(move_stack.size(), static_cast<size_t>(maxlen)); // Ancient windows macro means we can't use std::min without a hideous undef mess.
 	if (final_path_length) 
 	{
-		memcpy(&path.Command[0], best_path.data(), final_path_length);
+		for (size_t ii = 0; ii < final_path_length; ++ii)
+		{ // Copy the moves off the stack to the command list. Stack is LIFO so this gives us the correct order of commands.
+			path.Command[ii] = move_stack.top();
+			move_stack.pop();
+		}
 		path.Length = final_path_length;
 		path.LastOverlap = -1;
 		path.LastFixup = -1;
