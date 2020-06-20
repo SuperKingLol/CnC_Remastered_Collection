@@ -1822,7 +1822,7 @@ float FootClass::Move_Penalty_Factor(CELL move_destination, const MoveType move_
 	auto move_penalty_factor = m_base_move_penalty_factor[move_type];
 	if (this->What_Am_I() == RTTI_INFANTRY)
 	{
-		const auto* cell_ptr = &Map[move_destination];
+		const auto cell_ptr = &Map[move_destination];
 		if (cell_ptr->Overlay != OVERLAY_NONE
 			&& OverlayTypeClass::As_Reference(cell_ptr->Overlay).Land == LAND_TIBERIUM) 
 		{
