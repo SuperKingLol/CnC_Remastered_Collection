@@ -1710,8 +1710,9 @@ MoveType InfantryClass::Can_Enter_Cell(CELL cell, FacingType ) const
 	/*
 	** if a unit has the cell reserved then we just can't go in there.
 	*/
-	if (retval == MOVE_OK && cellptr->Flag.Occupy.Vehicle) {
-		return(MOVE_NO);
+	if (retval == MOVE_OK && cellptr->Flag.Occupy.Vehicle) 
+	{
+		return MOVE_TEMP;
 	}
 
 	/*
