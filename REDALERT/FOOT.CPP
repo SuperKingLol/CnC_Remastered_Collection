@@ -392,7 +392,7 @@ bool FootClass::Basic_Path(void)
 			**	maximum severity is reached.
 			*/
 			for (;;) {
-				path = Find_Path(cell, &workpath1[0], sizeof(workpath1), PathThreshhold);
+				path = FIND_PATH(cell, &workpath1[0], sizeof(workpath1), PathThreshhold);
 				if (path && path->Cost) {
 					memcpy(&path1, path, sizeof(path1));
 					found1 = true;
