@@ -52,11 +52,8 @@
 //#include	<string.h>
 
 // Libs for new pathfinding functionality
-#include <vector>
 #include <fstream>
-#include <queue>
 #include <stack>
-#include <functional>
 #include <unordered_map>
 
 /*
@@ -1633,8 +1630,6 @@ void FootClass::Debug_Draw_Path(PathType *path)
 		Draw_Cell_Point(pos, true,	-1, 0);
 	}
 }
-
-
 
 //-----------------------------------------------------
 // Better Pathfinding.

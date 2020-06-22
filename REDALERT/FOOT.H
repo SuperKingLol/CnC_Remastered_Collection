@@ -35,6 +35,17 @@
 #ifndef FOOT_H
 #define FOOT_H
 
+#define USE_BETTER_PATHFINDING
+#ifdef USE_BETTER_PATHFINDING
+#define FIND_PATH Find_Better_Path
+#else
+#define FIND_PATH Find_Path
+#endif
+#include <array>
+#include <string>
+#include <vector>
+#include <functional>
+#include <queue>
 #include	"target.h"
 #include	"type.h"
 #include	"techno.h"
@@ -364,6 +375,51 @@ class FootClass :	public TechnoClass
 	private:
 		int Passable_Cell(CELL cell, FacingType face, int threat, MoveType threshhold);
 		PathType * Find_Path(CELL dest, FacingType *final_moves, int maxlen, MoveType threshhold);
+
+		//-----------------------------------------------------------------------------------------------
+		// Better Pathfinding
+		PathType* Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold) const;
+
+		struct Node
+		{
+			CELL cell;
+			CELL parent_cell;
+			float cost_root_to_node;
+			float cost_node_to_goal;
+			float cost_total;
+
+			const bool operator>(const Node& rhs) const
+			{
+				return this->cost_total > rhs.cost_total;
+			}
+		};
+		template <typename T_data, typename T_comparator>
+		using ordered_queue_type = std::priority_queue<Node, std::vector<T_data>, T_comparator>;
+		Node Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const;
+		std::vector<Node> Generate_Successor_Nodes(const Node& node, CELL goal) const;
+
+		std::pair<int, int> Cell_To_Coordinates(CELL cell) const;
+		float Compute_Distance_To_Cell(CELL start, CELL end) const;
+		static constexpr float m_base_move_penalty_factor[MOVE_COUNT] = {
+			1, //	MOVE_OK
+			1, //	MOVE_CLOAK
+			3, //	MOVE_MOVING_BLOCK
+			8, //	MOVE_DESTROYABLE
+			8, //	MOVE_TEMP
+			1000 //	MOVE_NO - this should never be required, but give it a big penalty value anyway
+		};
+		float Move_Penalty_Factor(const CELL move_destination, const MoveType move_type) const;
+		std::vector<FootClass::Node> FootClass::Goal_Cost_Map(const CELL goal, const size_t num_nodes) const;
+		void For_Each_Adjacent_Cell(const CELL cell, std::function<void(const CELL&, const FacingType&)> callback) const;
+
+		// Pathfinding debug helper functions. These shouldn't be used in normal circumstances.
+		using map_buffer_type = std::array<std::array<uint8_t, 3>, MAP_CELL_W* MAP_CELL_H>;
+		map_buffer_type Generate_Map_Buffer(const CELL start, const CELL destination) const;
+		static void Write_Map_Buffer_To_CSV_File(const std::string output_file, const map_buffer_type& map_buffer);
+		static void Write_Path_To_CSV_File(const std::string output_file, const PathType& path);
+		// End of Better Pathfinding
+		//-----------------------------------------------------------------------------------------------
+
 		void Debug_Draw_Map(char const * txt, CELL start, CELL dest, bool pause);
 		void Debug_Draw_Path(PathType *path);
 		bool Follow_Edge(CELL start, CELL target, PathType *path, FacingType search, FacingType olddir, int threat, int threat_stage, int max_cells, MoveType threshhold);

@@ -51,6 +51,11 @@
 #include	"function.h"
 //#include	<string.h>
 
+// Libs for new pathfinding functionality
+//#include <fstream>
+#include <stack>
+#include <unordered_map>
+
 /*
 **	When an edge search is started, it can be performed CLOCKwise or
 **	COUNTERCLOCKwise direction.
@@ -1305,3 +1310,199 @@ int FootClass::Passable_Cell(CELL cell, FacingType face, int threat, MoveType th
 	return(_value[move]);
 }
 
+//-----------------------------------------------------
+// Better Pathfinding.
+// AStar-based algorithm which trades off increased computational load (which we can easily handle, thanks to 25 years
+// of hardware improvements since the release of the original C&C) for better pathfinding.
+PathType* FootClass::Find_Better_Path(CELL dest, FacingType* final_moves, int maxlen, MoveType threshhold) const
+{
+	const CELL source = Coord_Cell(Coord); // Source expressed as cell
+
+#ifdef DEBUG_PATHFINDING
+	auto map_buffer = Generate_Map_Buffer(source, dest);
+	const std::string output_path = { DEBUG_OUTPUT_FILE_PATH };
+	Write_Map_Buffer_To_CSV_File(output_path + "better_map.csv", map_buffer);
+#endif
+
+	/*
+	** Initialize the path structure so that we can keep track of the
+	** path.
+	*/
+	static PathType path; // Main path control.
+	path.Start = source;
+	path.Cost = 0;
+	path.Length = 0;
+	path.Command = final_moves;
+	path.Command[0] = END;
+	path.Overlap = MainOverlap;
+	path.LastOverlap = -1;
+	path.LastFixup = -1;
+
+	memset(path.Overlap, 0, sizeof(MainOverlap));
+
+	/*
+	** Clear the over lap list and then make sure that our starting position is marked
+	** on the overlap list.  (Otherwise the harvesters will drive in circles... )
+	*/
+	//	memset(path.Overlap, 0, 512);
+	path.Overlap[source >> 5] |= (1 << ((source & 31) - 1));
+
+	/*
+	**	Account for trailing end of list command, so reduce the maximum
+	**	allowed legal commands to reflect this.
+	*/
+	maxlen--;
+
+	// Min heap. Store open nodes with lowest total cost at the top.
+	ordered_queue_type<Node, std::greater<Node>> open_nodes;
+
+	auto start_node = Create_Node(source, source, 0, dest); // We identify the source node as the node with its own index as the parent
+
+	// Keep track of which nodes we've visited
+	std::unordered_map<size_t, Node> visited_nodes = { {start_node.cell, start_node} };
+
+	// Try to find lowest-cost path to goal. Once we have no more open_nodes, we're done.
+	open_nodes.push(start_node);
+	while (!open_nodes.empty())
+	{
+		// Get current node from min heap and check if it's the goal
+		auto current_node = open_nodes.top();
+		if (current_node.cell == dest)
+			break; // We've reached the goal! Top node is final node.
+		open_nodes.pop();
+
+		// Generate successor nodes to the current one
+		auto successor_nodes = Generate_Successor_Nodes(current_node, dest);
+
+		for (auto& node : successor_nodes)
+		{
+			// Check if we've already visited this node
+			auto itr_nodes = visited_nodes.find(node.cell);
+			if (itr_nodes != std::end(visited_nodes))
+				if (itr_nodes->second.cost_total <= node.cost_total)
+					continue; // This isn't the lowest-cost path to this node. Skip adding it to the open node list
+			visited_nodes[node.cell] = node; // Update/add cost for this node --> it was either not previously seen, or this is the lowest-cost path.
+			open_nodes.push(node);
+		}
+	}
+
+	std::stack<FacingType> move_stack;
+	if (!open_nodes.empty())
+	{ // We found a solution
+		// Start at final node and continue backwards through parent nodes until we reach the start node.
+		// The start node has its own cell index as the parent. 
+		auto node = open_nodes.top();
+		path.Cost = node.cost_total; // Final cost of path
+		while (node.cell != node.parent_cell)
+		{ // At each step, get the move direction required to enter the cell and add it to the move stack
+			auto move_direction = CELL_FACING(node.parent_cell, node.cell);
+			move_stack.push(move_direction);
+			node = visited_nodes[node.parent_cell];
+		}
+	}
+
+	// Populate the path structure (if we found a path)
+	auto final_path_length = min(move_stack.size(), static_cast<size_t>(maxlen)); // Ancient windows macro means we can't use std::min without a hideous undef mess.
+	if (final_path_length)
+	{
+		for (size_t ii = 0; ii < final_path_length; ++ii)
+		{ // Copy the moves off the stack to the command list. Stack is LIFO so this gives us the correct order of commands.
+			path.Command[ii] = move_stack.top();
+			move_stack.pop();
+		}
+		path.Length = final_path_length;
+		path.LastOverlap = -1;
+		path.LastFixup = -1;
+	}
+
+	/*
+	**	Poke in the stop command.
+	*/
+	if (path.Length < maxlen)
+	{
+		path.Command[path.Length++] = END;
+	}
+
+#ifdef DEBUG_PATHFINDING
+	Write_Path_To_CSV_File(output_path + "better_final_path.csv", path);
+#endif
+
+	return &path;
+};
+
+// Create a Node object for the given cell, then populate its parents cell and cost fields
+FootClass::Node FootClass::Create_Node(CELL cell, CELL parent_cell, float cost_to_node, CELL destination_cell) const
+{
+	Node node{ cell, parent_cell, cost_to_node, this->Compute_Distance_To_Cell(cell, destination_cell) };
+	node.cost_total = node.cost_root_to_node + node.cost_node_to_goal;
+	return std::move(node);
+};
+
+// Return the XY map coordinates of the cell
+std::pair<int, int> FootClass::Cell_To_Coordinates(const CELL cell) const
+{
+	return { Cell_X(cell), Cell_Y(cell) };
+};
+
+// Compute octile distance between cells. 
+// This is the distance allowed by a combination of horizontal, vertical, and diagonal moves.
+float FootClass::Compute_Distance_To_Cell(const CELL cell_1, const CELL cell_2) const
+{
+	auto [x1, y1] = Cell_To_Coordinates(cell_1);
+	auto [x2, y2] = Cell_To_Coordinates(cell_2);
+	const auto dx = std::abs(x1 - x2);
+	const auto dy = std::abs(y1 - y2);
+	const auto min_dx_dy = (dx < dy) ? dx : dy; // Need to use this to avoid having messy hacks to get around definition of min macro
+	return static_cast<float>((dx + dy) + (std::sqrtf(2.0f) - 2.0f) * min_dx_dy);
+};
+
+// Construct vector of pathfinding nodes for all neighbouring cells which can be entered.
+std::vector<FootClass::Node> FootClass::Generate_Successor_Nodes(const Node& node, CELL destination) const
+{
+	std::vector<Node> successor_nodes;
+	auto validate_successor_candidate = [this, &successor_nodes, node, destination](const CELL successor_cell, const FacingType direction)
+	{
+		constexpr float straight_cost = 1.0f;
+		constexpr float diagonal_cost = 1.41421356237f; // sqrt(2)
+		float move_cost = direction & 0b1 ? diagonal_cost : straight_cost; // Odd directions = diagonal, Even directions = vertical/horizontal
+
+		// Check that the node can be entered
+		// TODO: add threat-based cost here
+		auto move_result = Can_Enter_Cell(successor_cell, direction);
+		if (move_result < MOVE_NO)
+		{ // Create successor node and add it to the vector
+			move_cost *= Move_Penalty_Factor(successor_cell, move_result); // Scale cost penalty based on move result
+			auto successor_node = Create_Node(successor_cell, node.cell, node.cost_root_to_node + move_cost, destination);
+			successor_nodes.push_back(successor_node);
+		}
+	};
+	For_Each_Adjacent_Cell(node.cell, validate_successor_candidate);
+	return successor_nodes;
+}
+
+// Apply a callback function to each cell adjacent to the target cell
+void FootClass::For_Each_Adjacent_Cell(const CELL target_cell, std::function<void(const CELL&, const FacingType&)> callback) const
+{
+	for (FacingType direction = FACING_FIRST; direction < FACING_COUNT; ++direction)
+	{
+		const auto successor_cell = Adjacent_Cell(target_cell, direction);
+		callback(successor_cell, direction);
+	}
+}
+
+// Returns the penalty factor associated with the specified move type towards the given cell.
+float FootClass::Move_Penalty_Factor(CELL move_destination, const MoveType move_type) const
+{
+	auto move_penalty_factor = m_base_move_penalty_factor[move_type];
+	// TODO: threat-based cost penalty
+	//if (this->What_Am_I() == RTTI_INFANTRY)
+	//{
+	//	const auto cell_ptr = &Map[move_destination];
+	//	if (cell_ptr->Overlay != OVERLAY_NONE
+	//		&& OverlayTypeClass::As_Reference(cell_ptr->Overlay).Land == LAND_TIBERIUM)
+	//	{
+	//		move_penalty_factor *= InfantryClass::tiberium_fear_factor;
+	//	}
+	//}
+	return move_penalty_factor;
+}
