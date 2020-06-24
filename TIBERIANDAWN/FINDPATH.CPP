@@ -1841,8 +1841,58 @@ float FootClass::Move_Penalty_Factor(CELL move_destination, const MoveType move_
 	return move_penalty_factor;
 }
 
+// TODO: test and finish implementation
 // Produce a cost map around the goal area containing N passable nodes
-std::vector<FootClass::Node> FootClass::Goal_Cost_Map(const CELL goal, const size_t num_nodes) const
-{ // TODO: continue here 16/06/2020
-	return {}; // TODO: replace this with an actual implementation!
+std::vector<FootClass::Node> FootClass::Goal_Cost_Map(const CELL goal, const size_t num_nodes, const MoveType move_threshold) const
+{
+	static std::vector<Node> goal_nodes; // TODO: if the destination hasn't changed since last time, return the previous goal calculation.
+	if (goal_nodes.size())
+	{
+		goal_nodes.clear();
+		goal_nodes.reserve(num_nodes);
+	}
+
+	ordered_queue_type<Node, std::greater<Node>> open_nodes;
+	auto start_node = Create_Node(goal, goal, 0, goal); // Start from the goal node and explore outwards
+	open_nodes.push(start_node);
+
+	// Keep track of which nodes we've visited
+	std::unordered_map<size_t, Node> visited_nodes = { {start_node.cell, start_node} };
+
+	// Keep searching until we've found the N nearest nodes to the goal
+	while (!open_nodes.empty())
+	{
+		if (visited_nodes.size() >= num_nodes)
+			break; // We've found the N closest nodes!
+
+		auto node = open_nodes.top();
+		open_nodes.pop();
+
+		std::vector<Node> successor_nodes;
+		auto validate_successor_candidate = [this, &successor_nodes, move_threshold, node](const CELL successor_cell, const FacingType direction)
+		{ // Check that the node can be entered
+			auto move_result = Can_Enter_Cell(successor_cell, direction);
+			if (move_result < move_threshold)
+			{ // Create successor node and add it to the vector
+				constexpr float straight_cost = 1.0f;
+				constexpr float diagonal_cost = 1.41421356237f; // sqrt(2)
+				const float move_cost = direction & 0b1 ? diagonal_cost : straight_cost; // Odd directions = diagonal, Even directions = vertical/horizontal
+				auto successor_node = Create_Node(successor_cell, node.cell, node.cost_root_to_node + move_cost, successor_cell);
+				successor_nodes.push_back(successor_node);
+			}
+		};
+		For_Each_Adjacent_Cell(node.cell, validate_successor_candidate);
+
+		for (auto& successor_node : successor_nodes)
+		{
+			// If we haven't previously seen this node, or if we found the lowest-cost path to this node, update the 
+			auto itr = visited_nodes.find(successor_node.cell);
+			if (itr != std::end(visited_nodes)) 
+				if (itr->second.cost_root_to_node > successor_node.cost_root_to_node)
+					itr->second = successor_node; // We found a lower-cost path than the previous best to this node
+			else
+				visited_nodes[successor_node.cell] = successor_node; // Node not previously seen
+		}
+	}
+	return goal_nodes;
 }

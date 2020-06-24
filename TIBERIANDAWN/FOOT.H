@@ -325,7 +325,7 @@ class FootClass :	public TechnoClass
 			1000 //	MOVE_NO - this should never be required, but give it a big penalty value anyway
 		};
 		float Move_Penalty_Factor(const CELL move_destination, const MoveType move_type) const;
-		std::vector<FootClass::Node> FootClass::Goal_Cost_Map(const CELL goal, const size_t num_nodes) const;
+		std::vector<Node> Goal_Cost_Map(const CELL goal, const size_t num_nodes, const MoveType move_threshold = MOVE_NO) const;
 		void For_Each_Adjacent_Cell(const CELL cell, std::function<void(const CELL&, const FacingType&)> callback) const;
 
 		// Pathfinding debug helper functions. These shouldn't be used in normal circumstances.
