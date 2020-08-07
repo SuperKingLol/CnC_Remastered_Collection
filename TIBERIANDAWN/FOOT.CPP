@@ -1427,6 +1427,8 @@ void FootClass::Per_Cell_Process(bool center)
 		}
 //	}
 
+	Map[Coord_Cell(Coord)].Goodie_Check(this, true);
+
 	TechnoClass::Per_Cell_Process(center);
 }
 
@@ -1639,8 +1641,20 @@ int FootClass::Mission_Enter(void)
 		**	Since there is no potential object to enter, then abort this
 		**	mission with some default standby mission.
 		*/
-		ArchiveTarget = TARGET_NONE;
-		Enter_Idle_Mode();
+		if (MissionQueue == MISSION_NONE) {
+			/*
+			**	If this is a harvester, then return to harvesting.
+			**	Set a hacky target so we know to skip to the proper state.
+			*/
+			if (What_Am_I() == RTTI_UNIT && ((UnitClass*)this)->Class->IsToHarvest) {
+				Assign_Mission(MISSION_HARVEST);
+				Assign_Target(As_Target());
+				Assign_Destination(TARGET_NONE);
+			} else {
+				ArchiveTarget = TARGET_NONE;
+				Enter_Idle_Mode();
+			}
+		}
 	}
 	return(TICKS_PER_SECOND/2);
 }
