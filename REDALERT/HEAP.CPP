@@ -1,3 +1,5 @@
+#pragma warning (disable : 4291) // Disable warning for new without matching delete operator
+
 //
 // Copyright 2020 Electronic Arts Inc.
 //
