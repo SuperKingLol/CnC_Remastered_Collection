@@ -62,8 +62,8 @@ class Int {
 		**	integers. Big number math is basically manipulation of arbitrary
 		**	length arrays.
 		*/
-		operator digit * () {return & reg[0];}
-		operator const digit * () const {return & reg[0];}
+		operator redalert_digit * () {return & reg[0];}
+		operator const redalert_digit * () const {return & reg[0];}
 
 		/*
 		**	Array access operator (references bit position). Bit 0 is the first bit.
@@ -196,7 +196,7 @@ class Int {
 
 
 	private:
-		digit reg[PRECISION];
+		redalert_digit reg[PRECISION];
 
 
 		struct RemainderTable
